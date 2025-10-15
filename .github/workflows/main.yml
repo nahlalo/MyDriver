@@ -14,27 +14,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Add msbuild to path
+    - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup EWDK
+    - name: Download and install WDK
       run: |
-        $isoPath = Join-Path $env:RUNNER_TEMP "ewdk.iso"
-        Invoke-WebRequest -URI "https://go.microsoft.com/fwlink/?linkid=2251231" -OutFile $isoPath
-        $mountResult = Mount-DiskImage -ImagePath $isoPath -PassThru
-        $driveLetter = ($mountResult | Get-Volume ).DriveLetter
-        Copy-Item -Path "$($driveLetter):\Program Files\Windows Kits\10" -Destination "C:\Program Files (x86)\Windows Kits" -Recurse -Force
+        Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/?linkid=2128854' -OutFile 'wdksetup.exe'
+        Start-Process -FilePath 'wdksetup.exe' -ArgumentList '/q' -Wait
       shell: pwsh
 
     - name: Build driver
       run: |
-        Set-Location -Path "MyDriver"
-        & "C:\Program Files (x86)\Windows Kits\10\bin\setenv.bat" "C:\Program Files (x86)\Windows Kits\10" x64
-        build.exe
-      working-directory: ${{ github.workspace }}
-
-    - name: Upload driver artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: MyDriver.sys
-        path: ${{ github.workspace }}/build/MyDriver/
+        cd MyDriver
+        "
