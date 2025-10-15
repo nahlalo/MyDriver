@@ -19,8 +19,9 @@ jobs:
 
     - name: Setup EWDK
       run: |
-        Invoke-WebRequest -URI "https://go.microsoft.com/fwlink/?linkid=2251231" -OutFile "ewdk.iso"
-        $mountResult = Mount-DiskImage -ImagePath "ewdk.iso" -PassThru
+        $isoPath = Join-Path $env:RUNNER_TEMP "ewdk.iso"
+        Invoke-WebRequest -URI "https://go.microsoft.com/fwlink/?linkid=2251231" -OutFile $isoPath
+        $mountResult = Mount-DiskImage -ImagePath $isoPath -PassThru
         $driveLetter = ($mountResult | Get-Volume ).DriveLetter
         Copy-Item -Path "$($driveLetter):\Program Files\Windows Kits\10" -Destination "C:\Program Files (x86)\Windows Kits" -Recurse -Force
       shell: pwsh
@@ -36,4 +37,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: MyDriver.sys
-        path: $
+        path: ${{ github.workspace }}/build/MyDriver/
