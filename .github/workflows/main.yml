@@ -1,4 +1,4 @@
-name: Build WDM Driver
+name: Build Driver with Official Container
 
 on:
   push:
@@ -8,25 +8,22 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2019 # Required for this specific container
 
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install WDK
-      run: |
-        Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/?linkid=2128854' -OutFile 'wdksetup.exe'
-        Start-Process -FilePath 'wdksetup.exe' -ArgumentList '/q' -Wait
-      shell: pwsh
+    - name: Build using WDK container
+      uses: microsoft/windows-driver-samples-action@v1
+      with:
+        build-command: 'build -cZ'
+        # The container automatically finds and builds the driver.
 
-    - name: Build Driver
-      run: |
-        "C:\Program Files (x86 )\Windows Kits\10\build\build.exe" -cZ
-      shell: cmd
-
-    - name: Upload Driver Artifact
+    - name: Upload driver artifact
       uses: actions/upload-artifact@v4
       with:
         name: Driver-artifact
-        path: objfre_win7_amd64/amd64/Driver.sys
+        # The path inside the container is complex, let's find the file
+        path: '**/*.sys'
+        if-no-files-found: error
