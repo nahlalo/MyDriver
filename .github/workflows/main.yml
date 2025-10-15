@@ -1,0 +1,37 @@
+name: Build MyDriver
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Add msbuild to path
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Setup EWDK
+      run: |
+        Invoke-WebRequest -URI "https://go.microsoft.com/fwlink/?linkid=2251231" -OutFile "ewdk.iso"
+        hdiutil attach ewdk.iso
+        Copy-Item -Path "D:\Program Files\Windows Kits\10" -Destination "C:\Program Files (x86 )\Windows Kits" -Recurse
+      shell: pwsh
+
+    - name: Build driver
+      run: |
+        cd MyDriver
+        build.exe
+      working-directory: ${{ github.workspace }}
+
+    - name: Upload driver artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: MyDriver.sys
+        path: ${{ github.workspace }}/build/MyDriver/MyDriver.sys
