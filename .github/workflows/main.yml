@@ -1,4 +1,4 @@
-name: Build Driver with Official Container
+name: Manual Driver Build
 
 on:
   push:
@@ -8,22 +8,42 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019 # Required for this specific container
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Build using WDK container
-      uses: microsoft/windows-driver-samples-action@v1
-      with:
-        build-command: 'build -cZ'
-        # The container automatically finds and builds the driver.
+    - name: Install Visual Studio Build Tools
+      uses: microsoft/setup-msbuild@v2
 
-    - name: Upload driver artifact
+    - name: Install WDK
+      run: |
+        Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/?linkid=2128854' -OutFile 'wdksetup.exe'
+        Start-Process -FilePath 'wdksetup.exe' -ArgumentList '/q' -Wait
+      shell: pwsh
+
+    - name: Build the Driver
+      run: |
+        call "C:\Program Files (x86 )\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+        call "C:\Program Files (x86)\Windows Kits\10\bin\setenv.bat" "C:\Program Files (x86)\Windows Kits\10" x64
+        build -cZ
+      shell: cmd
+
+    - name: Find and Upload Artifact
+      id: find_artifact
+      run: |
+        $sysFile = Get-ChildItem -Path . -Recurse -Filter Driver.sys | Select-Object -First 1
+        if ($null -eq $sysFile) {
+          Write-Error "Driver.sys not found after build!"
+          exit 1
+        }
+        echo "Found driver at: $($sysFile.FullName)"
+        echo "artifact_path=$($sysFile.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      shell: pwsh
+
+    - name: Upload Driver
       uses: actions/upload-artifact@v4
       with:
-        name: Driver-artifact
-        # The path inside the container is complex, let's find the file
-        path: '**/*.sys'
-        if-no-files-found: error
+        name: Built-Driver
+        path: ${{ env.artifact_path }}
